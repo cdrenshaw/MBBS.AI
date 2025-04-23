@@ -1,0 +1,45 @@
+LEVEL4 {AI Chat for MBBS}
+
+  This option sets whether to show the login
+  message to the user.  YES to show it or NO
+  to not show it.  The default is YES.
+
+DISPLOM {Display message at logon? YES} B
+
+LEVEL6 {AI Chat for MBBS}
+
+LOGIN {[1;37m
+This BBS is running AI Chat!
+} T Login Message
+
+DISPMEN {[1;37m
+
+[33m C [37m... Start chatting
+[33m X [37m... Exit
+
+Choose one of the above options: } T MBBSAI Menu
+
+SHORTM {[1;37m 
+Choose ([33mS[37m, [33m X[37m, or [5m?[0;1;37m for menu): } T Short menu
+
+LEAVE {
+Thanks, [33m%s[37m, for using AI Chat!
+} T Exiting module
+
+INVSEL {
+That is not a valid option.
+} T Incorrect selection from Menu
+
+USRLSTS {
+[33mUser-ID[35m                         
+------------------------------
+} T User list
+
+USRLSTU {[33m%-32s
+} T User list detail
+
+USRLSTE {[37m ** End of List **
+} T User list end
+
+NOUSERS {[37m ERROR: No users found
+} T User list not found

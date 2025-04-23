@@ -1,0 +1,6 @@
+; Filename: MBBSAI_LIB.DEF
+LIBRARY MBBSAI.DLL
+; *** Visual Studio 2019 EXPORT ALIASES ONLY ***
+; Module Description Here - Copyright (c) Skynet, Inc.
+EXPORTS
+    init__mbbsai=_init__mbbsai	@1
