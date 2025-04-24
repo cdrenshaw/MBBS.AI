@@ -25,10 +25,9 @@ VOID  store_user_record(CHAR* userid); /* Store user record in DAT file      */
 VOID  display_user_records(VOID);    /* Display users in DAT file            */
 VOID  system_shutdown(VOID);         /* Shutdown routine                     */    
 VOID  end_mbbsai(VOID);              /* empty fcn to show EOF for debug      */
-VOID  ai_chat(CHAR* usertext);                 /* Call the AI chat function            */
+VOID  ai_chat(CHAR* usertext);       /* Call the AI chat function            */
 VOID  on_chunk(VOID);                /* output chunked response data         */ 
 VOID  cleanup_mbbsai(VOID);          /* Dispose of open handle if needed     */
-INT   show_message(VOID);            /* injoth routine                       */   
 
 // module definition
 INT usrstt;                          /* User state in this module            */
@@ -37,7 +36,7 @@ struct module MBBSAI={               /* module interface block               */
      user_logon,                     /* user logon supplemental routine      */
      module_main,                    /* input routine if selected            */
      NULL,                           /* status-input routine if selected     */
-     show_message,                   /* "injoth" routine for this module     */
+     NULL,                           /* "injoth" routine for this module     */
      NULL,                           /* user logoff supplemental routine     */
      NULL,                           /* hangup (lost carrier) routine        */
      NULL,                           /* midnight cleanup routine             */
@@ -49,6 +48,7 @@ struct module MBBSAI={               /* module interface block               */
 GBOOL display_logon_msg;             /* Display logon message?               */
 HMCVFILE modmb;                      /* Module message file                  */
 DFAFILE* moddat;                     /* Module data file                     */
+INT usrchn;					         /* User channel number                  */
 
 static CHAT_HANDLE ai_handle;        /* Handle for the AI chat                */
 
@@ -93,6 +93,7 @@ user_logon(VOID)                     /* User Logon Message                   */
 GBOOL EXPORT
 module_main(VOID)                   /* Main module input routine              */
 {
+	usrchn = usrnum;                // Store the channel number for use later
     setmbk(modmb);
     switch (usrptr->substt) {
         case 0:
@@ -217,14 +218,7 @@ VOID EXPORT
 on_chunk(const char* utf8)
 {
     prf("%s", utf8);
-    injoth();
-}
-
-INT EXPORT
-show_message()
-{
-    btuxmn(usrnum, prfbuf);
-    return(1);
+	outprf(usrchn);
 }
 
 VOID EXPORT
