@@ -25,8 +25,14 @@ VOID  store_user_record(CHAR* userid); /* Store user record in DAT file      */
 VOID  display_user_records(VOID);    /* Display users in DAT file            */
 VOID  system_shutdown(VOID);         /* Shutdown routine                     */    
 VOID  end_mbbsai(VOID);              /* empty fcn to show EOF for debug      */
-VOID  ai_chat(CHAR* usertext);       /* Call the AI chat function            */
-VOID  on_chunk(VOID);                /* output chunked response data         */ 
+VOID  ai_chat(INT chan, CHAR* usertext);       /* Call the AI chat function            */
+VOID  on_chunk(INT cid,              /* output chunked response data         */
+               const char* uid, 
+               const char* txt, 
+               ULONG rt, 
+               ULONG st, 
+               int fin, 
+               int err);                
 VOID  cleanup_mbbsai(VOID);          /* Dispose of open handle if needed     */
 
 // module definition
@@ -48,12 +54,14 @@ struct module MBBSAI={               /* module interface block               */
 GBOOL display_logon_msg;             /* Display logon message?               */
 HMCVFILE modmb;                      /* Module message file                  */
 DFAFILE* moddat;                     /* Module data file                     */
-INT usrchn;					         /* User channel number                  */
 
 static CHAT_HANDLE ai_handle;        /* Handle for the AI chat                */
 
-struct moddat {                      /* Example module data file structure   */
+// TODO: track token usage
+struct moddat {                      /* Btrieve database file structure      */
     CHAR name[UIDSIZ];               /* userid                               */
+	ULONG htsend[12];                /* 12 month history of tokens sent      */
+	ULONG htrecv[12];                /* 12 month history of tokens received  */
 };
 
 // begin routines
@@ -93,7 +101,6 @@ user_logon(VOID)                     /* User Logon Message                   */
 GBOOL EXPORT
 module_main(VOID)                   /* Main module input routine              */
 {
-	usrchn = usrnum;                // Store the channel number for use later
     setmbk(modmb);
     switch (usrptr->substt) {
         case 0:
@@ -113,14 +120,20 @@ module_main(VOID)                   /* Main module input routine              */
                 prfmsg(DISPMEN);               // Re-display the menu on ?
                 break;
             }
-            else if (sameas(margv[0], "c")) {
+            else if (sameas(margv[0], "c")) {   // Start a chat
                 if (!ai_handle)
                 {
-                    ai_handle = Chat_Create();
+                    //TODO: Make model and prompt configurable by sysop
+                    ai_handle = Chat_Create("gpt-4o", 
+                        "You are a helpful assistant. Your responses should only contain ASCII characters.");
                     Chat_SetCallback(ai_handle, on_chunk);
-                    Chat_InitializeChat(ai_handle, "gpt-4o", "You are a helpful assistant.  Your responses should only contain ASCII characters.");
                 }
-                usrptr->substt = CHATTING;     // Start a chat
+				Chat_StartSession(ai_handle, usrnum, usaptr->userid);
+                usrptr->substt = CHATTING;     
+                prf(usaptr->userid);
+                prf(": ");
+				outprf(usrnum);
+                rstmbk();
                 return 1;
             }
             else 
@@ -129,14 +142,22 @@ module_main(VOID)                   /* Main module input routine              */
             break;
         case CHATTING:
             if (margc == 1 && sameas(margv[0], "x")) {
+				Chat_EndSession(ai_handle, usrnum);
                 prfmsg(usrptr->substt = DISPMEN); // Exit to the module main menu
             }
             else if (sameas(margv[0], "\0") || sameas(margv[0], "")) {
                                                  // Do nothing on empty user input
-            }               
+            }  
+            else if (sameas(margv[0], "clear")) { // Reset chat history for the session
+                Chat_ClearHistory(ai_handle, usrnum);
+				prfmsg(CLEARED);
+            }
             else {
                 rstrin();
-                ai_chat(input);
+				prfmsg(BOTNAME, "BBS Bot:\n");  //TODO: Make bot name sysop configurable
+				outprf(usrnum);
+                rstmbk();
+                ai_chat(usrnum, input);
                 return 1;
             }
             break;
@@ -157,6 +178,10 @@ store_user_record(CHAR *userid)      /* Store user into DAT file              */
     if (!dfaAcqEQ(&modd, userid, 0)) {
         setmem(&modd, sizeof(struct moddat), 0);
         strcpy(modd.name, userid);
+        for (int i = 0; i < 12; i++) {
+            modd.htsend[i] = 0;
+			modd.htrecv[i] = 0;
+        }
         dfaInsert(&modd);
     }
     dfaRstBlk();
@@ -215,16 +240,18 @@ end_mbbsai(VOID)                     /* used to help GALEXCEP.OUT analysis    */
 }
 
 VOID EXPORT
-on_chunk(const char* utf8)
+on_chunk(INT cid, const char* uid, const char* txt, ULONG rt, ULONG st, int fin, int err)
 {
-    prf("%s", utf8);
-	outprf(usrchn);
+    prf("%s", txt);
+    if (fin)
+        prf("\r\n%s: ", uid);
+	outprf(cid);
 }
 
 VOID EXPORT
-ai_chat(CHAR* usertext)
+ai_chat(INT chan, CHAR* usertext)
 {
-    Chat_SendAsync(ai_handle, usertext);
+    Chat_SendAsync(ai_handle, chan, usertext);
 }
 
 VOID EXPORT

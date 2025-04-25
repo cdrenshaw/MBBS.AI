@@ -7,21 +7,41 @@
 
 namespace MBBSAIWrapper
 {
+    /*  callback signature:
+        channelId  – int 
+		userId     – UTF-8  std::string
+        text       – UTF-8  std::string
+        stokens    - ulong
+		rtokens    - ulong
+        isFinal    – true when the assistant finished a turn
+        isError    – true when the message is an error
+    */
+
+    using ChatCallback = std::function<void(
+        int, 
+        const std::string&, 
+        const std::string&, 
+        unsigned long, 
+        unsigned long, 
+        bool isFinal, 
+        bool isError)>;
+
     class MBBSAI_API ChatWrapper
     {
         struct Impl;           // forward declaration
         Impl* _impl = nullptr; // native pointer
 
     public:
-        ChatWrapper();
+        ChatWrapper(const std::string& model, const std::string& prompt);
         ~ChatWrapper();
 
-        void SetCallback(std::function<void(std::string)> cb);
-        void InitializeChat(std::string const& model,
-            std::string const& systemMessage);
-        void ChatAsync(std::string const& userMessage);
+        void SetCallback(ChatCallback);
+        void StartChatSession(int channel, std::string& userid);
+        void EndChatSession(int channel);
+        void ClearConversationHistory(int channel);
+        void ChatAsync(int channel, std::string const& userMessage);
 
-        ChatWrapper(ChatWrapper const&) = delete;
+        ChatWrapper(const ChatWrapper&) = delete;
         ChatWrapper& operator=(ChatWrapper const&) = delete;
     };
 }

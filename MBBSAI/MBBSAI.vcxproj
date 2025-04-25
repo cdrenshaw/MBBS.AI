@@ -98,7 +98,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)lib\importlibs;$(SolutionDir)lib\v10</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)lib\importlibs;$(SolutionDir)Release;$(SolutionDir)lib\v10</AdditionalLibraryDirectories>
       <AdditionalDependencies>wgserver_lib.lib;galgsbl_lib.lib;MBBS.AI.Wrapper.lib</AdditionalDependencies>
       <ModuleDefinitionFile>MBBSAI_EXP.DEF</ModuleDefinitionFile>
       <OptimizeReferences>false</OptimizeReferences>
@@ -122,7 +122,7 @@
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)lib\importlibs;$(SolutionDir)lib\v10</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)lib\importlibs;$(SolutionDir)Release;$(SolutionDir)lib\v10</AdditionalLibraryDirectories>
       <AdditionalDependencies>wgserver_lib.lib; galgsbl_lib.lib; MBBS.AI.Wrapper.lib</AdditionalDependencies>
       <ModuleDefinitionFile>MBBSAI_EXP.DEF</ModuleDefinitionFile>
     </Link>

@@ -7,43 +7,61 @@
 using namespace MBBSAIWrapper;
 
 /* ------- helpers ------- */
-static inline ChatWrapper* asCpp(CHAT_HANDLE h)
+static inline ChatWrapper* cpp(CHAT_HANDLE h)
 {
-    return reinterpret_cast<ChatWrapper*>(h);
+	return reinterpret_cast<ChatWrapper*>(h);
 }
 
 /* ------- exported functions ------- */
 extern "C" {
 
-    CHAT_API CHAT_HANDLE Chat_Create(void)
+    CHAT_API CHAT_HANDLE Chat_Create(const char* model, const char* prompt)
     {
-        return new ChatWrapper();
+        std::string m = model ? model : "";
+        std::string p = prompt ? prompt : "";
+        return new ChatWrapper(m, p);
     }
 
     CHAT_API void Chat_Destroy(CHAT_HANDLE h)
     {
-        delete asCpp(h);
+        delete cpp(h);
     }
 
-    CHAT_API void Chat_SetCallback(CHAT_HANDLE h, ChatCallback cb)
+    CHAT_API void Chat_SetCallback(CHAT_HANDLE h, C_ChatCallback cb)
     {
-        asCpp(h)->SetCallback(
-            [cb](std::string s)
+        cpp(h)->SetCallback(
+            [cb](int cid, 
+                 const std::string& uid, 
+                 const std::string& txt, 
+                 unsigned long st, 
+                 unsigned long rt, 
+                 bool fin, 
+                 bool err)
             {
-                if (cb) cb(s.c_str());
+                if (cb) cb(cid, uid.c_str(), txt.c_str(), st, rt, fin, err);
             });
     }
 
-    CHAT_API void Chat_InitializeChat(CHAT_HANDLE h,
-        const char* model,
-        const char* systemPrompt)
+    CHAT_API void Chat_StartSession(CHAT_HANDLE h, int channel, const char* userid)
     {
-        asCpp(h)->InitializeChat(model, systemPrompt);
+        std::string uid = userid ? userid : "";
+        cpp(h)->StartChatSession(channel, uid);
     }
 
-    CHAT_API void Chat_SendAsync(CHAT_HANDLE h, const char* userMessage)
+	CHAT_API void Chat_EndSession(CHAT_HANDLE h, int channel)
+	{
+		cpp(h)->EndChatSession(channel);
+	}
+
+    CHAT_API void Chat_ClearHistory(CHAT_HANDLE h, int channel)
     {
-        asCpp(h)->ChatAsync(userMessage);
+        cpp(h)->ClearConversationHistory(channel);
+    }
+
+    CHAT_API void Chat_SendAsync(CHAT_HANDLE h, int channel, const char* userMsg)
+    {
+        std::string msg = userMsg ? userMsg : "";
+        cpp(h)->ChatAsync(channel, msg);
     }
 
 } /* extern "C" */

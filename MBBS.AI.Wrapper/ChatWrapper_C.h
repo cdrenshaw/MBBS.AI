@@ -13,20 +13,27 @@ extern "C" {
 
     typedef void* CHAT_HANDLE;        /* opaque pointer to C++ object */
 
-    typedef void(__cdecl* ChatCallback)(const char* utf8Chunk);
+    typedef void(__cdecl* C_ChatCallback)(
+        int           channelId,
+		const char*   userId,
+        const char*   utf8Text,
+		unsigned long stokens,
+		unsigned long rtokens,
+        int           isFinal,
+        int           isError);
 
     /* life‑cycle */
-    CHAT_API CHAT_HANDLE Chat_Create(void);
-    CHAT_API void        Chat_Destroy(CHAT_HANDLE h);
+    CHAT_API CHAT_HANDLE Chat_Create(const char* model, const char* prompt);
+    CHAT_API void        Chat_Destroy(CHAT_HANDLE);
 
     /* configuration */
-    CHAT_API void Chat_SetCallback(CHAT_HANDLE h, ChatCallback cb);
-    CHAT_API void Chat_InitializeChat(CHAT_HANDLE h,
-        const char* model,
-        const char* systemPrompt);
+    CHAT_API void Chat_SetCallback(CHAT_HANDLE, C_ChatCallback);
+    CHAT_API void Chat_StartSession(CHAT_HANDLE, int channel, const char* user);
+	CHAT_API void Chat_EndSession(CHAT_HANDLE, int channel);
 
     /* interaction */
-    CHAT_API void Chat_SendAsync(CHAT_HANDLE h, const char* userMessage);
+    CHAT_API void Chat_ClearHistory(CHAT_HANDLE, int channel);
+    CHAT_API void Chat_SendAsync(CHAT_HANDLE, int channel, const char* userMessage);
 
 #ifdef __cplusplus
 }  /* extern "C" */

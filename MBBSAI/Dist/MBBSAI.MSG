@@ -43,3 +43,10 @@ USRLSTE {[37m ** End of List **
 
 NOUSERS {[37m ERROR: No users found
 } T User list not found
+
+CLEARED {[37m Session history has been cleared.
+} T Session history cleared
+
+BOTNAME {
+[33m%s[35m
+} T Bot name

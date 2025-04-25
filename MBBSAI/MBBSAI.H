@@ -10,4 +10,6 @@
 #define USRLSTU     9
 #define USRLSTE    10
 #define NOUSERS    11
+#define CLEARED    12
+#define BOTNAME    13
 #define CHATTING   50

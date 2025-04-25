@@ -15,39 +15,42 @@ namespace MBBSAIWrapper
     private ref class Relay
     {
     internal:
-        Relay(std::function<void(std::string)>* cb) : _cb(cb) {}
+        Relay(ChatCallback* cb) : _cb(cb) {}
 
-        void OnMessage(Object^, String^ txt)
+        void OnManagedMessage(Object^, MBBS::AI::OpenAI::ChatEventArgs^ e)
         {
-            if (_cb && (*_cb))
-                (*_cb)(marshal_as<std::string>(txt));
+            if (!_cb || !(*_cb)) return;
+
+			std::string uid = marshal_as<std::string>(e->UserId);
+            std::string txt = marshal_as<std::string>(e->Message);
+            (*_cb)(e->ChannelId, uid, txt, 
+                static_cast<unsigned long>(e->SendTokens), 
+                static_cast<unsigned long>(e->RecvTokens), 
+                e->IsFinal, e->IsError);
         }
     private:
-        std::function<void(std::string)>* _cb;
+        ChatCallback* _cb;
     };
 
     /*----------- Impl definition -----------*/
     struct ChatWrapper::Impl
     {
-        msclr::gcroot<Chat^>                       chat;
-        msclr::gcroot<Relay^>                      relay;
-        msclr::gcroot<EventHandler<String^>^>      handler;
-        std::function<void(std::string)>           callback;
+        msclr::gcroot<Chat^> chat;
+        msclr::gcroot<Relay^> relay;
+        msclr::gcroot<EventHandler<MBBS::AI::OpenAI::ChatEventArgs^>^> handler;
+        ChatCallback cb;
     };
 
     /*----------- ctor -----------*/
-    ChatWrapper::ChatWrapper()
+    ChatWrapper::ChatWrapper(const std::string& model, const std::string& prompt)
     {
         _impl = new Impl;
 
-        _impl->chat = gcnew Chat();
-        _impl->relay = gcnew Relay(&_impl->callback);
+        _impl->chat = gcnew Chat(gcnew String(model.c_str()), gcnew String(prompt.c_str()));
+        _impl->relay = gcnew Relay(&_impl->cb);
 
-        /* 1️⃣ convert gcroot to managed handle before passing to delegate */
-        Relay^ relayObj = _impl->relay;
-
-        EventHandler<String^>^ h = gcnew EventHandler<String^>(
-            relayObj, &Relay::OnMessage);
+        auto h = gcnew EventHandler<MBBS::AI::OpenAI::ChatEventArgs^>(
+            _impl->relay, &Relay::OnManagedMessage);
 
         _impl->handler = h;                         // store
         _impl->chat->OnMessageReceived += h;        // hook
@@ -56,31 +59,41 @@ namespace MBBSAIWrapper
     /*----------- dtor -----------*/
     ChatWrapper::~ChatWrapper()
     {
-        Chat^ chat = _impl->chat;                // 2️⃣ retrieve handles
-        EventHandler<String^>^ h = _impl->handler;
+        Chat^ chat = static_cast<Chat^>(_impl->chat);
+        EventHandler<MBBS::AI::OpenAI::ChatEventArgs^>^ h =
+            static_cast<EventHandler<MBBS::AI::OpenAI::ChatEventArgs^>^>(_impl->handler);
 
         if (chat != nullptr && h != nullptr)
-            chat->OnMessageReceived -= h;           // unhook
-
+            chat->OnMessageReceived -= h;
+        
         delete _impl;
         _impl = nullptr;
     }
 
     /*----------- public API -----------*/
-    void ChatWrapper::SetCallback(std::function<void(std::string)> cb)
+    void ChatWrapper::SetCallback(ChatCallback cb)
     {
-        _impl->callback = std::move(cb);
+        _impl->cb = std::move(cb);
     }
 
-    void ChatWrapper::InitializeChat(std::string const& model,
-        std::string const& system)
+    void ChatWrapper::StartChatSession(int channel,
+        std::string& userid)
     {
-        _impl->chat->InitializeChat(gcnew String(model.c_str()),
-            gcnew String(system.c_str()));
+        _impl->chat->StartChatSession(channel, gcnew String(userid.c_str()));
     }
 
-    void ChatWrapper::ChatAsync(std::string const& user)
+    void ChatWrapper::EndChatSession(int channel)
     {
-        _impl->chat->ChatAsync(gcnew String(user.c_str()));
+		_impl->chat->EndChatSession(channel);
+    }
+
+    void ChatWrapper::ClearConversationHistory(int channel) 
+    { 
+        _impl->chat->ClearConversationHistory(channel); 
+    }
+
+    void ChatWrapper::ChatAsync(int channel, std::string const& msg)
+    {
+        _impl->chat->ChatAsync(channel, gcnew String(msg.c_str()));
     }
 }
