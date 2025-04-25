@@ -125,7 +125,7 @@ module_main(VOID)                   /* Main module input routine              */
                 {
                     //TODO: Make model and prompt configurable by sysop
                     ai_handle = Chat_Create("gpt-4o", 
-                        "You are a helpful assistant. Your responses should only contain ASCII characters.");
+                        "You are a helpful AI assistant named BBS Bot. Your responses should only contain ASCII characters or ANSI escape sequences.");
                     Chat_SetCallback(ai_handle, on_chunk);
                 }
 				Chat_StartSession(ai_handle, usrnum, usaptr->userid);
@@ -151,6 +151,7 @@ module_main(VOID)                   /* Main module input routine              */
             else if (sameas(margv[0], "clear")) { // Reset chat history for the session
                 Chat_ClearHistory(ai_handle, usrnum);
 				prfmsg(CLEARED);
+                prf("%s", usaptr->userid);
             }
             else {
                 rstrin();
