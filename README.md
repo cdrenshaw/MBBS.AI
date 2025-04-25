@@ -1,15 +1,13 @@
 ## MBBS.AI
 A Chat GPT module for Major BBS v10
 
-On your MBBS server, install the latest dotnet 9 runtime and the latest VC++ redistributable.  Make
-sure that they are both the x86 version.  Also create an environment variable called OPENAI_API_KEY
-with your OpenAI API key.
+On your MBBS server, install the latest x86 version of the dotnet 9 runtime and the latest VC++ redistributable.  Also create an environment variable called OPENAI_API_KEY with your OpenAI API key.
 
 Compile the solution in Release mode for x86/win32 to include vcruntime and ucrtbase.
 
-Run `dotnet publish MBBS.AI.OpenAI.csproj -c Release -f net9.0 -r win-x86 --no-self-contained -o ..\deploy`
+Run `dotnet publish MBBS.AI.OpenAI.csproj -c Release -f net9.0 -r win-x86 --no-self-contained -o ..\Release`
 
-Copy the following files to your MMBS directory (they will all be in the \Release or \deploy directories):
+Copy the following files from the \MBBS.AI\Release directory to your MBBS directory:
 
 - ijwhost.dll
 - MBBS.AI.OpenAI.deps.json
