@@ -1,5 +1,5 @@
 # MBBS AI
-A Chat GPT module for Major BBS v10
+A Chat GPT module for [The Major BBS v10](https://www.themajorbbs.com/)
 
 ## Installation
 1. If you don't already have an OpenAI API key, you can sign up and get one at [platform.openai.com](https://platform.openai.com).  Keep in mind that API usage costs money and you'll need to fund your account with a credit card before you can use your API key.
