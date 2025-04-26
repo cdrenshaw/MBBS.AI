@@ -73,10 +73,9 @@ extern "C" {
 				 const std::string& img,
 				 unsigned long st,
 				 unsigned long rt,
-				 bool err,
-				 const std::string& emsg)
+				 bool err)
 			{
-				if (cb) cb(cid, uid.c_str(), img.c_str(), st, rt, err, emsg.c_str());
+				if (cb) cb(cid, uid.c_str(), img.c_str(), st, rt, err);
 			});
 	}
 

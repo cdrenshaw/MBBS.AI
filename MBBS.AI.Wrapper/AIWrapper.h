@@ -17,13 +17,12 @@ namespace MBBSAIWrapper
         bool isError)>;                             /* isError              */
 
     using ImageCallback = std::function<void(
-		int,                                        /* channelId            */ 
-		const std::string&, 					    /* userId               */  
-		const std::string&,     	                /* imgANSI              */  
-		unsigned long,      	                    /* stokens              */
-		unsigned long,	  	                        /* rtokens              */
-		bool isError,   						    /* isError              */
-		const std::string&)>;			            /* errMsg               */
+        int,                                        /* channelId            */
+        const std::string&, 					    /* userId               */
+        const std::string&,     	                /* imgANSI              */
+        unsigned long,      	                    /* stokens              */
+        unsigned long,	  	                        /* rtokens              */
+        bool isError)>;   						    /* isError              */
 
     class MBBSAI_API AIWrapper
     {

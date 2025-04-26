@@ -35,12 +35,11 @@ namespace MBBSAIWrapper
             if (!_imgcb || !(*_imgcb)) return;
 
 			std::string uid = marshal_as<std::string>(e->UserId);
-			std::string err = marshal_as<std::string>(e->ErrorMessage);
-			std::string img = marshal_as<std::string>(e->ImageANSI);
+			std::string img = marshal_as<std::string>(e->Message);
 			(*_imgcb)(e->ChannelId, uid, img,
 				static_cast<unsigned long>(e->SendTokens),
 				static_cast<unsigned long>(e->RecvTokens),
-				e->IsError, err);
+				e->IsError);
         }
     private:
         ChatCallback* _chatcb;
