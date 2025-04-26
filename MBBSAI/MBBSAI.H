@@ -12,4 +12,6 @@
 #define NOUSERS    11
 #define CLEARED    12
 #define BOTNAME    13
+#define WORKING	   14
 #define CHATTING   50
+#define IMAGEGEN   51

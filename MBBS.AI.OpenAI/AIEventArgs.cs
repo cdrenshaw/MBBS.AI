@@ -17,6 +17,7 @@
             string message,
             ulong sendTokens = 0,
             ulong recvTokens = 0,
+            bool isFinal = false,
             bool isError = false)
         {
             _channelId = channelId;
@@ -24,6 +25,7 @@
             Message = message;
             SendTokens = sendTokens;
             RecvTokens = recvTokens;
+            IsFinal = isFinal;
             IsError = isError;
         }
 
@@ -32,6 +34,7 @@
         public string Message { get; set; } = string.Empty;
         public ulong SendTokens { get; set; } = 0;
         public ulong RecvTokens { get; set; } = 0;
+        public bool IsFinal { get; set; } = false;
         public bool IsError { get; set; } = false;
     }
 }

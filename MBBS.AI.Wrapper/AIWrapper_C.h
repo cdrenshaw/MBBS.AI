@@ -14,21 +14,22 @@ extern "C" {
     typedef void* AI_HANDLE;        /* opaque pointer to C++ object */
 
     typedef void(__cdecl* C_ChatCallback)(
-        int           channelId,
-		const char*   userId,
-        const char*   utf8Text,
-		unsigned long stokens,
-		unsigned long rtokens,
-        int           isFinal,
-        int           isError);
+        int                 channelId,
+		const char*         userId,
+        const char*         utf8Text,
+		unsigned long       stokens,
+		unsigned long       rtokens,
+        int                 isFinal,
+        int                 isError);
 
     typedef void(__cdecl* C_ImageCallback)(
-        int channelId,
-        const char* userId,
-		const char* imgANSI,
-        const unsigned long stokens,
-        const unsigned long rtokens,
-        int isError);
+        int                 channelId,
+        const char*         userId,
+		const char*         imgANSI,
+        unsigned long       stokens,
+        unsigned long       rtokens,
+        int                 isFinal,
+        int                 isError);
 
     /* life‑cycle */
     AI_API AI_HANDLE AI_Create(const char* chatModel, const char* imgModel, const char* chatPrompt);

@@ -13,11 +13,8 @@
             ulong recvTokens = 0, 
             bool isFinal = false, 
             bool isError = false)
-            : base(channelId, userId, message, sendTokens, recvTokens, isError)
+            : base(channelId, userId, message, sendTokens, recvTokens, isFinal, isError)
         {
-            IsFinal = isFinal;
         }
-
-        public bool IsFinal { get; set; } = false;
     }
 }

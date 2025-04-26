@@ -1,7 +1,7 @@
 ﻿// ChatWrapper.cpp
 #include "pch.h"
 #include "AIWrapper.h"
-
+#include <mutex> 
 #include <msclr/gcroot.h>
 #include <msclr/marshal_cppstd.h>
 
@@ -15,11 +15,12 @@ namespace MBBSAIWrapper
     private ref class Relay
     {
     internal:
-        Relay(ChatCallback* ccb) : _chatcb(ccb) {}
-		Relay(ImageCallback* icb) : _imgcb(icb) {}
+        Relay(ChatCallback* ccb, ImageCallback* icb, std::mutex* mtx)
+            : _chatcb(ccb), _imgcb(icb), _mtx(mtx) { }
 
         void OnManagedMessage(Object^, MBBS::AI::OpenAI::ChatEventArgs^ e)
         {
+            std::lock_guard<std::mutex> lock(*_mtx);
             if (!_chatcb || !(*_chatcb)) return;
 
 			std::string uid = marshal_as<std::string>(e->UserId);
@@ -32,6 +33,7 @@ namespace MBBSAIWrapper
 
         void OnImageMessage(Object^, MBBS::AI::OpenAI::ImageEventArgs^ e)
         {
+            std::lock_guard<std::mutex> lock(*_mtx);
             if (!_imgcb || !(*_imgcb)) return;
 
 			std::string uid = marshal_as<std::string>(e->UserId);
@@ -39,11 +41,12 @@ namespace MBBSAIWrapper
 			(*_imgcb)(e->ChannelId, uid, img,
 				static_cast<unsigned long>(e->SendTokens),
 				static_cast<unsigned long>(e->RecvTokens),
-				e->IsError);
+				e->IsFinal, e->IsError);
         }
     private:
         ChatCallback* _chatcb;
         ImageCallback* _imgcb;
+        std::mutex* _mtx;
     };
 
     /*----------- Impl definition -----------*/
@@ -53,6 +56,7 @@ namespace MBBSAIWrapper
         msclr::gcroot<Relay^> relay;
         msclr::gcroot<EventHandler<MBBS::AI::OpenAI::ChatEventArgs^>^> chatHandler;
         msclr::gcroot<EventHandler<MBBS::AI::OpenAI::ImageEventArgs^>^> imageHandler;
+        std::mutex cbMutex;
         ChatCallback chatcb;
 		ImageCallback imgcb;
     };
@@ -63,7 +67,7 @@ namespace MBBSAIWrapper
         _impl = new Impl;
 
         _impl->ai = gcnew AIService(gcnew String(chatModel.c_str()), gcnew String(imgModel.c_str()), gcnew String(chatPrompt.c_str()));
-        _impl->relay = gcnew Relay(&_impl->chatcb);
+        _impl->relay = gcnew Relay(&_impl->chatcb, &_impl->imgcb, &_impl->cbMutex);
 
         auto ch = gcnew EventHandler<MBBS::AI::OpenAI::ChatEventArgs^>(
             _impl->relay, &Relay::OnManagedMessage);
@@ -86,19 +90,16 @@ namespace MBBSAIWrapper
 		EventHandler<MBBS::AI::OpenAI::ImageEventArgs^>^ ih =
 			static_cast<EventHandler<MBBS::AI::OpenAI::ImageEventArgs^>^>(_impl->imageHandler);
 
-        if (ai != nullptr && ch != nullptr && ih != nullptr)
-        {
-            ai->OnMessageReceived -= ch;
-			ai->OnImageReceived -= ih;
-        }
-        
+        if (ai && ch) ai->OnMessageReceived -= _impl->chatHandler;
+        if (ai && ih) ai->OnImageReceived -= _impl->imageHandler;
+
         delete _impl;
         _impl = nullptr;
     }
 
     /*----------- public API -----------*/
     void AIWrapper::StartSession(int channel,
-        std::string& userid)
+        const std::string& userid)
     {
         _impl->ai->StartSession(channel, gcnew String(userid.c_str()));
     }
@@ -110,6 +111,7 @@ namespace MBBSAIWrapper
 
     void AIWrapper::SetChatCallback(ChatCallback cb)
     {
+        std::lock_guard<std::mutex> lock(_impl->cbMutex);
         _impl->chatcb = std::move(cb);
     }
 
@@ -125,6 +127,7 @@ namespace MBBSAIWrapper
 
 	void AIWrapper::SetImageCallback(ImageCallback cb)
 	{
+        std::lock_guard<std::mutex> lock(_impl->cbMutex);
 		_impl->imgcb = std::move(cb);
 	}
 

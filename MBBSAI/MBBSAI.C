@@ -40,8 +40,8 @@ VOID  on_img_recv(INT cid,                      /* output image data            
 	              const char* imgANSI,
 	              ULONG rt,
 	              ULONG st,
-	              int err,
-	              const char* errMsg);
+	              int fin,   
+	              int err);
 
 
 // module definition
@@ -88,6 +88,16 @@ init__mbbsai(VOID)                   /* initialize Module                    */
 
     // open the data file
     moddat = dfaOpen("MBBSAI.DAT", sizeof(struct moddat), NULL);
+
+    // open a handle to the AI chat library
+    if (!ai_handle)
+    {
+        //TODO: Make model and prompt configurable by sysop
+        ai_handle = AI_Create("gpt-4o", "dall-e-3",
+            "You are a helpful AI assistant named BBS Bot. Your responses should only contain ASCII characters or ANSI escape sequences.");
+        Chat_SetCallback(ai_handle, on_msg_chunk);
+        Image_SetCallback(ai_handle, on_img_recv);
+    }
     
     // Add message to audit log that module has been loaded
     shocst(spr("AI Chat for MBBS v10"),"Loaded version 1.0.0");
@@ -115,29 +125,21 @@ module_main(VOID)                   /* Main module input routine              */
             // Check if user exists in DAT file then display menu
             store_user_record(usaptr->userid);
             prfmsg(usrptr->substt = DISPMEN);
+            AI_StartSession(ai_handle, usrnum, usaptr->userid);
             break;
         case DISPMEN:
-            if (sameas(margv[0], "x")) {
-                prfmsg(LEAVE, usaptr->userid); // User selected to exit the module
+            if (sameas(margv[0], "x")) {                                    // User selected to exit the module
+                AI_EndSession(ai_handle, usrnum);
+                prfmsg(LEAVE, usaptr->userid); 
                 return(0);
             }
-            else if (sameas(margv[0], "\0") || sameas(margv[0], "")) {
-                                               // Do nothing, will default to short menu
+            else if (sameas(margv[0], "\0") || sameas(margv[0], "")) {      // Do nothing, will default to short menu
             }                                  
-            else if (sameas(margv[0], "?")) {
-                prfmsg(DISPMEN);               // Re-display the menu on ?
+            else if (sameas(margv[0], "?")) {                               // Re-display the menu on ?
+                prfmsg(DISPMEN);               
                 break;
             }
-            else if (sameas(margv[0], "c")) {   // Start a chat
-                if (!ai_handle)
-                {
-                    //TODO: Make model and prompt configurable by sysop
-                    ai_handle = AI_Create("gpt-4o", "dall-e-3",
-                        "You are a helpful AI assistant named BBS Bot. Your responses should only contain ASCII characters or ANSI escape sequences.");
-                    Chat_SetCallback(ai_handle, on_msg_chunk);
-                    Image_SetCallback(ai_handle, on_img_recv);
-                }
-				AI_StartSession(ai_handle, usrnum, usaptr->userid);
+            else if (sameas(margv[0], "c")) {                               // Start a chat
                 usrptr->substt = CHATTING;     
                 prf(usaptr->userid);
                 prf(": ");
@@ -145,29 +147,51 @@ module_main(VOID)                   /* Main module input routine              */
                 rstmbk();
                 return 1;
             }
+            else if (sameas(margv[0], "i")) {                               // Start an image generation session
+                usrptr->substt = IMAGEGEN;
+				prf(usaptr->userid);
+				prf(": ");
+                outprf(usrnum);
+                rstmbk();
+                return 1;
+            }
             else 
-                prfmsg(INVSEL);                // Invalid selection message
+                prfmsg(INVSEL);                                             // Invalid selection message
             prfmsg(SHORTM);
             break;
         case CHATTING:
-            if (margc == 1 && sameas(margv[0], "x")) {
-				AI_EndSession(ai_handle, usrnum);
-                prfmsg(usrptr->substt = DISPMEN); // Exit to the module main menu
+            if (margc == 1 && sameas(margv[0], "x")) {                      // Exit to the module main menu
+                prfmsg(usrptr->substt = DISPMEN);                           
             }
-            else if (sameas(margv[0], "\0") || sameas(margv[0], "")) {
-                                                 // Do nothing on empty user input
+            else if (sameas(margv[0], "\0") || sameas(margv[0], "")) {      // Do nothing on empty user input
             }  
-            else if (sameas(margv[0], "clear")) { // Reset chat history for the session
+            else if (sameas(margv[0], "clear")) {                           // Reset chat history for the session
                 Chat_ClearHistory(ai_handle, usrnum);
 				prfmsg(CLEARED);
                 prf("%s", usaptr->userid);
             }
-            else {
+            else {                                                          // Send user input to AI chat function
                 rstrin();
-				prfmsg(BOTNAME, "BBS Bot:\n");  //TODO: Make bot name sysop configurable
+                //TODO: Make bot name sysop configurable
+				prfmsg(BOTNAME, "BBS Bot:\n");  
 				outprf(usrnum);
                 rstmbk();
                 ai_chat(usrnum, input);
+                return 1;
+            }
+            break;
+		case IMAGEGEN:
+            if (margc == 1 && sameas(margv[0], "x")) {                      // Exit to the module main menu
+                prfmsg(usrptr->substt = DISPMEN);
+            }
+            else if (sameas(margv[0], "\0") || sameas(margv[0], "")) {      // Do nothing on empty user input
+            }
+            else {                                                          // Send user input to AI chat function
+                rstrin();
+                prfmsg(WORKING);
+                outprf(usrnum);
+                rstmbk();
+                ai_image(usrnum, input);
                 return 1;
             }
             break;
@@ -259,12 +283,11 @@ on_msg_chunk(INT cid, const char* uid, const char* txt, ULONG rt, ULONG st, int 
 }
 
 VOID EXPORT
-on_img_recv(INT cid, const char* uid, const char* imgANSI, ULONG rt, ULONG st, int err, const char* errMsg)
+on_img_recv(INT cid, const char* uid, const char* imgANSI, ULONG rt, ULONG st, int fin, int err)
 {
-	if (err)
-		prf("Error: %s", errMsg);
-	else
-		prf("%s\r\n%s", imgANSI, uid);
+    prf("%s", imgANSI);
+    if (fin)
+        prf("\033[37m\r\n%s", uid);
 	outprf(cid);
 }
 

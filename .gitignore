@@ -6,6 +6,8 @@
 Release/
 Debug/
 deploy/
+*.js
+*.js.map
 
 # Visual Studio editor caches
 **/SingleFileISense/

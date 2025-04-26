@@ -1,5 +1,5 @@
-﻿declare type Colour = [number, number, number];
-declare type TermColour = [...Colour, number];
+﻿type Colour = [number, number, number];
+type TermColour = [...Colour, number];
 
 const colours: TermColour[] = [],
     buildColours = (): void => {
@@ -60,7 +60,7 @@ const colours: TermColour[] = [],
             )
             .shift() || [0, 0, 0, 0];
 
-export const rgbToAnsi = (r: number, g: number, b: number) => {
+function rgbToAnsi(r: number, g: number, b: number) {
     if (!colours.length) {
         buildColours();
     }
@@ -68,4 +68,4 @@ export const rgbToAnsi = (r: number, g: number, b: number) => {
     return (best(colours, [r, g, b]) || [])[3];
 };
 
-export default rgbToAnsi;
+(globalThis as any).rgbToAnsi = rgbToAnsi;

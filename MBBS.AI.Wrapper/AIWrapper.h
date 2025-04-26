@@ -22,6 +22,7 @@ namespace MBBSAIWrapper
         const std::string&,     	                /* imgANSI              */
         unsigned long,      	                    /* stokens              */
         unsigned long,	  	                        /* rtokens              */
+        bool isFinal,   				            /* isFinal              */
         bool isError)>;   						    /* isError              */
 
     class MBBSAI_API AIWrapper
@@ -33,7 +34,7 @@ namespace MBBSAIWrapper
         AIWrapper(const std::string& chatModel, const std::string& imgModel, const std::string& chatPrompt);
         ~AIWrapper();
 
-        void StartSession(int channel, std::string& userid);
+        void StartSession(int channel, std::string const& userid);
         void EndSession(int channel);
         void SetChatCallback(ChatCallback);
         void ClearConversationHistory(int channel);

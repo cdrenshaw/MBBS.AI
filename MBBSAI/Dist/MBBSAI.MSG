@@ -54,3 +54,7 @@ Session history has been cleared.
 BOTNAME {
 %s
 } T Bot name
+
+WORKING {
+Working on your request...
+} T Working on request

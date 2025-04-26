@@ -1,14 +1,11 @@
-﻿// imageToAnsiProcessor.pure.ts  (compile to JS)
-import rgbToTerm from './rgbToAnsi';
-
-export interface Options {
+﻿interface Options {
     colours: 'true' | 'false';
     unicode: boolean;
     width: number;
     height: number;
 }
 
-export function pixelsToAnsi(
+function pixelsToAnsi(
     rgba: Uint8Array,            // byte[] from C#
     opts: Options
 ): string {
@@ -20,7 +17,7 @@ export function pixelsToAnsi(
     const rgbaToAnsi = (r: number, g: number, b: number, a: number, fg = false) =>
         a < 13
             ? fg ? '39' : '49'
-            : `${fg ? 38 : 48};5;${rgbToTerm(r, g, b)}`;
+            : `${fg ? 38 : 48};5;${rgbToAnsi(r, g, b)}`;
 
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
@@ -34,4 +31,4 @@ export function pixelsToAnsi(
     return out;
 }
 
-(globalThis as any).pixelsToAnsi = pixelsToAnsi;  // expose to C#
+(globalThis as any).pixelsToAnsi = pixelsToAnsi;

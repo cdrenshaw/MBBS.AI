@@ -37,12 +37,6 @@ namespace MBBS.AI.Wrapper
             User user = new(userId);
             user.ConversationHistory.Add(new SystemChatMessage(_chatPrompt));
             _users.TryAdd(channelId, user);
-
-            OnMessageReceived?.Invoke(this, new ChatEventArgs(
-                channelId,
-                userId,
-                message: "Chat session started.",
-                isError: false));
         }
 
         public void EndSession(int channelId)
@@ -51,12 +45,6 @@ namespace MBBS.AI.Wrapper
                 return;
 
             _users.TryRemove(channelId, out User? user);
-
-            OnMessageReceived?.Invoke(this, new ChatEventArgs(
-                channelId,
-                string.Empty,
-                message: "Chat session ended.",
-                isError: false));
         }
 
         public async Task ChatAsync(int channelId, string userMessage)
@@ -149,7 +137,7 @@ namespace MBBS.AI.Wrapper
             _users[channelId].ConversationHistory.Add(new SystemChatMessage(_chatPrompt));
         }
 
-        public Task GetImageAsync(int channelId, string imgPrompt)
+        public async Task GetImageAsync(int channelId, string imgPrompt)
         {
             if (!_users.ContainsKey(channelId))
             {
@@ -158,21 +146,40 @@ namespace MBBS.AI.Wrapper
                     userId: string.Empty,
                     message: "Image session not started.",
                     isError: true));
-                return Task.CompletedTask;
+                return;
             }
 
             ImageGenerationOptions options = new()
             {
                 Quality = GeneratedImageQuality.High,
-                Size = GeneratedImageSize.W1792xH1024,
+                Size = GeneratedImageSize.W1024xH1024,
                 Style = GeneratedImageStyle.Vivid,
                 ResponseFormat = GeneratedImageFormat.Bytes
             };
 
-            GeneratedImage image = _imageClient.GenerateImage(imgPrompt, options);
-            BinaryData imageBytes = image.ImageBytes;
+            try
+            {
+                ClientResult<GeneratedImage> result = await _imageClient.GenerateImageAsync(imgPrompt, options);
+                string ansi = ImageProcessor.ToAnsi(result.Value.ImageBytes.ToArray());
 
-            return Task.CompletedTask;
+                foreach (string part in ImageProcessor.ChunkAnsi(ansi, 240)) 
+                {
+                    OnImageReceived?.Invoke(this, new ImageEventArgs(
+                    channelId,
+                    _users[channelId].UserId,
+                    message: part));
+                }
+            }
+            catch (Exception ex)
+            {
+                OnImageReceived?.Invoke(this, new ImageEventArgs(
+                    channelId,
+                    _users[channelId].UserId,
+                    message: ex.Message,
+                    isError: true));
+            }
+
+            return;
         }
     }
 }
