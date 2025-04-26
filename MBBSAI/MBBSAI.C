@@ -15,25 +15,34 @@
 #include "gcomm.h"
 #include "majorbbs.h"
 #include "MBBSAI.H"
-#include "ChatWrapper_C.h"
+#include "AIWrapper_C.h"
 
 // function declarations
-GBOOL user_logon(VOID);              /* Logon routine                        */
-GBOOL module_main(VOID);             /* Main module routine                  */         
-VOID  user_deleted(CHAR* userid);    /* Delete account routine               */
-VOID  store_user_record(CHAR* userid); /* Store user record in DAT file      */
-VOID  display_user_records(VOID);    /* Display users in DAT file            */
-VOID  system_shutdown(VOID);         /* Shutdown routine                     */    
-VOID  end_mbbsai(VOID);              /* empty fcn to show EOF for debug      */
-VOID  ai_chat(INT chan, CHAR* usertext);       /* Call the AI chat function            */
-VOID  on_chunk(INT cid,              /* output chunked response data         */
-               const char* uid, 
-               const char* txt, 
-               ULONG rt, 
-               ULONG st, 
-               int fin, 
-               int err);                
-VOID  cleanup_mbbsai(VOID);          /* Dispose of open handle if needed     */
+GBOOL user_logon(VOID);                         /* Logon routine                        */
+GBOOL module_main(VOID);                        /* Main module routine                  */         
+VOID  user_deleted(CHAR* userid);               /* Delete account routine               */
+VOID  store_user_record(CHAR* userid);          /* Store user record in DAT file        */
+VOID  display_user_records(VOID);               /* Display users in DAT file            */
+VOID  system_shutdown(VOID);                    /* Shutdown routine                     */    
+VOID  end_mbbsai(VOID);                         /* empty fcn to show EOF for debug      */
+VOID  cleanup_mbbsai(VOID);                     /* Dispose of open handle if needed     */
+VOID  ai_chat(INT chan, CHAR* usertext);        /* Call the AI chat function            */
+VOID  ai_image(INT chan, CHAR* usertext);       /* Call the AI image function           */
+VOID  on_msg_chunk(INT cid,                     /* output chunked response data         */
+                   const char* uid, 
+                   const char* txt, 
+                   ULONG rt, 
+                   ULONG st, 
+                   int fin, 
+                   int err);        
+VOID  on_img_recv(INT cid,                      /* output image data                    */
+	              const char* uid,
+	              const char* imgANSI,
+	              ULONG rt,
+	              ULONG st,
+	              int err,
+	              const char* errMsg);
+
 
 // module definition
 INT usrstt;                          /* User state in this module            */
@@ -55,7 +64,7 @@ GBOOL display_logon_msg;             /* Display logon message?               */
 HMCVFILE modmb;                      /* Module message file                  */
 DFAFILE* moddat;                     /* Module data file                     */
 
-static CHAT_HANDLE ai_handle;        /* Handle for the AI chat                */
+static AI_HANDLE ai_handle;          /* Handle for the AI chat                */
 
 // TODO: track token usage
 struct moddat {                      /* Btrieve database file structure      */
@@ -94,8 +103,7 @@ user_logon(VOID)                     /* User Logon Message                   */
         outprf(usrnum);
         rstmbk();
     }
-
-    return(0);
+    return 0;
 }
 
 GBOOL EXPORT
@@ -124,11 +132,12 @@ module_main(VOID)                   /* Main module input routine              */
                 if (!ai_handle)
                 {
                     //TODO: Make model and prompt configurable by sysop
-                    ai_handle = Chat_Create("gpt-4o", 
+                    ai_handle = AI_Create("gpt-4o", "dall-e-3",
                         "You are a helpful AI assistant named BBS Bot. Your responses should only contain ASCII characters or ANSI escape sequences.");
-                    Chat_SetCallback(ai_handle, on_chunk);
+                    Chat_SetCallback(ai_handle, on_msg_chunk);
+                    Image_SetCallback(ai_handle, on_img_recv);
                 }
-				Chat_StartSession(ai_handle, usrnum, usaptr->userid);
+				AI_StartSession(ai_handle, usrnum, usaptr->userid);
                 usrptr->substt = CHATTING;     
                 prf(usaptr->userid);
                 prf(": ");
@@ -142,7 +151,7 @@ module_main(VOID)                   /* Main module input routine              */
             break;
         case CHATTING:
             if (margc == 1 && sameas(margv[0], "x")) {
-				Chat_EndSession(ai_handle, usrnum);
+				AI_EndSession(ai_handle, usrnum);
                 prfmsg(usrptr->substt = DISPMEN); // Exit to the module main menu
             }
             else if (sameas(margv[0], "\0") || sameas(margv[0], "")) {
@@ -241,11 +250,21 @@ end_mbbsai(VOID)                     /* used to help GALEXCEP.OUT analysis    */
 }
 
 VOID EXPORT
-on_chunk(INT cid, const char* uid, const char* txt, ULONG rt, ULONG st, int fin, int err)
+on_msg_chunk(INT cid, const char* uid, const char* txt, ULONG rt, ULONG st, int fin, int err)
 {
     prf("%s", txt);
     if (fin)
         prf("\r\n%s: ", uid);
+	outprf(cid);
+}
+
+VOID EXPORT
+on_img_recv(INT cid, const char* uid, const char* imgANSI, ULONG rt, ULONG st, int err, const char* errMsg)
+{
+	if (err)
+		prf("Error: %s", errMsg);
+	else
+		prf("%s\r\n%s", imgANSI, uid);
 	outprf(cid);
 }
 
@@ -256,11 +275,17 @@ ai_chat(INT chan, CHAR* usertext)
 }
 
 VOID EXPORT
+ai_image(INT chan, CHAR* usertext)
+{
+	Image_PromptAsync(ai_handle, chan, usertext);
+}
+
+VOID EXPORT
 cleanup_mbbsai(VOID)
 {
     if (ai_handle)
     {
-        Chat_Destroy(ai_handle);
+        AI_Destroy(ai_handle);
         ai_handle = NULL;
     }
 }

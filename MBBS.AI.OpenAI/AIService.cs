@@ -1,35 +1,62 @@
 ﻿using MBBS.AI.OpenAI;
 using OpenAI.Chat;
+using OpenAI.Images;
 using System.ClientModel;
+using System.Collections.Concurrent;
 
 namespace MBBS.AI.Wrapper
 {
-    public class Chat
+    public class AIService : IAIService
     {
-        public EventHandler<ChatEventArgs>? OnMessageReceived;
+        public event EventHandler<ChatEventArgs>? OnMessageReceived;
+        public event EventHandler<ImageEventArgs>? OnImageReceived;
 
-        ChatClient? _chatClient;
-        Dictionary<int, User> _users = new();
-        string _systemPrompt;
-        string _model;
-        
+        readonly ChatClient _chatClient;
+        readonly ImageClient _imageClient;
+
+        ConcurrentDictionary<int, User> _users = new();
+        string _chatPrompt;
+        string _chatModel;
+        string _imageModel;
+
         // ctor
-        public Chat(string model, string prompt) 
+        public AIService(string chatModel, string imageModel, string chatPrompt) 
         {
-            _model = model;
-            _systemPrompt = prompt;
-            _chatClient = new(model: _model, Environment.GetEnvironmentVariable("OPENAI_API_KEY"));
+            _chatModel = chatModel;
+            _imageModel = imageModel;
+            _chatPrompt = chatPrompt;
+            _chatClient = new(model: _chatModel, Environment.GetEnvironmentVariable("OPENAI_API_KEY"));
+            _imageClient = new(model: _imageModel, Environment.GetEnvironmentVariable("OPENAI_API_KEY"));
         }
 
-        public void StartChatSession(int channelId, string userId)
-        {
-            _users.Add(channelId, new User(userId));
-        }
-
-        public void EndChatSession(int channelId)
+        public void StartSession(int channelId, string userId)
         {
             if (_users.ContainsKey(channelId))
-                _users.Remove(channelId);
+                return;
+
+            User user = new(userId);
+            user.ConversationHistory.Add(new SystemChatMessage(_chatPrompt));
+            _users.TryAdd(channelId, user);
+
+            OnMessageReceived?.Invoke(this, new ChatEventArgs(
+                channelId,
+                userId,
+                message: "Chat session started.",
+                isError: false));
+        }
+
+        public void EndSession(int channelId)
+        {
+            if (!_users.ContainsKey(channelId))
+                return;
+
+            _users.TryRemove(channelId, out User? user);
+
+            OnMessageReceived?.Invoke(this, new ChatEventArgs(
+                channelId,
+                string.Empty,
+                message: "Chat session ended.",
+                isError: false));
         }
 
         public async Task ChatAsync(int channelId, string userMessage)
@@ -46,17 +73,6 @@ namespace MBBS.AI.Wrapper
             }
 
             User user = _users[channelId];
-
-            if (_chatClient == null)
-            {
-                OnMessageReceived?.Invoke(this, new ChatEventArgs(
-                    channelId,
-                    user.UserId,
-                    message: "Chat client not initialized.", 
-                    isError: true, 
-                    isFinal: true));
-                return;
-            }
 
             // Add the user's tag in the request
             user.ConversationHistory.Add(new UserChatMessage(userMessage) { ParticipantName = user.UserId });
@@ -130,7 +146,33 @@ namespace MBBS.AI.Wrapper
             if (!_users.ContainsKey(channelId))
                 return;
             _users[channelId].ConversationHistory.Clear();
-            _users[channelId].ConversationHistory.Add(new SystemChatMessage(_systemPrompt));
+            _users[channelId].ConversationHistory.Add(new SystemChatMessage(_chatPrompt));
+        }
+
+        public Task GetImageAsync(int channelId, string imgPrompt)
+        {
+            if (!_users.ContainsKey(channelId))
+            {
+                OnImageReceived?.Invoke(this, new ImageEventArgs(
+                    channelId,
+                    userId: string.Empty,
+                    message: "Image session not started.",
+                    isError: true));
+                return Task.CompletedTask;
+            }
+
+            ImageGenerationOptions options = new()
+            {
+                Quality = GeneratedImageQuality.High,
+                Size = GeneratedImageSize.W1792xH1024,
+                Style = GeneratedImageStyle.Vivid,
+                ResponseFormat = GeneratedImageFormat.Bytes
+            };
+
+            GeneratedImage image = _imageClient.GenerateImage(imgPrompt, options);
+            BinaryData imageBytes = image.ImageBytes;
+
+            return Task.CompletedTask;
         }
     }
 }

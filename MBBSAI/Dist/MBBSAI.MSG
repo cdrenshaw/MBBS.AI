@@ -15,12 +15,13 @@ This BBS is running AI Chat!
 DISPMEN {[1;37m
 
 [33m C [37m... Start chatting
+[33m I [37m... Generate images
 [33m X [37m... Exit
 
 Choose one of the above options: } T MBBSAI Menu
 
 SHORTM {[1;37m 
-Choose ([33mS[37m, [33m X[37m, or [5m?[0;1;37m for menu): } T Short menu
+Choose ([33mS[37m, [33m I[37m, [33m X[37m, or [5m?[0;1;37m for menu): } T Short menu
 
 LEAVE {
 Thanks, [33m%s[37m, for using AI Chat!
